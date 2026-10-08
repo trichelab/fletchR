@@ -93,9 +93,10 @@ length(cells)
 
 # this would be a COUNT operation in duckdb obvs
 frags_per_cell <- function(cell, frags) length(which(frags$name == cell))
-
-# this is slow AF 
 system.time(fpc <- sapply(cells, frags_per_cell, frags=bed_tbl))
+# this is slow AF 
+# ^C
+# Timing stopped at: 1609 47.08 1667
 
 # write to parquet
 library(nanoparquet) 
@@ -107,6 +108,54 @@ system.time(write_parquet(bed_tbl, bed_pqt))
 
 # open with duckdb
 # which takes FOREVER to install btw 
+# see https://duckdb.org/community_extensions/extensions/duckhts
+# and https://cran.r-project.org/web/packages/Rduckhts/refman/Rduckhts.html
 library(duckdb)
+library(Rduckhts) 
+con <- rduckhts_connect()
+system.time(bed_hts <- rduckhts_bed(con, stub, bed)) # must be tabixed, duh
+#    user  system elapsed 
+#  35.688   2.741  38.677 
+
+bed_tbxpqt <- paste(stub, "tabix", "parquet", sep=".")
+system.time(rduckhts_tabix_convert_parquet(con, path=bed, output=bed_tbxpqt))
+#    user  system elapsed 
+#  27.141   0.285  27.658 
+
+dbGetQuery(con=con, "SHOW TABLES") 
+# data frame with 1 row and 1 column
+#                     name
+#              <character>
+# 	     1 HA_Hs_6L2BM_Rb_H3K27..
+
+dbGetQuery(con=con, 
+	   paste0("CREATE INDEX IF NOT EXISTS cell_idx ON ", stub, "(name)"))
+# this takes a while fwiw, maybe 20 seconds 
+(fpc <- dbGetQuery(con=con, 
+ 		   paste0("SELECT name AS cell, ",
+	      		   "COUNT(*) AS frags ",
+		           "FROM ", stub, " ",
+			   "GROUP BY name")))
+# instantaneous
+# data frame with 81729 rows and 2 columns
+#                        cell     frags
+#                 <character> <numeric>
+# 		 1     AGGCAGAA_CAGCAACG_H0..     17760
+# 		 2     TTGCTAAG_TCCATCAA_G0..      1924
+# 		 3     CCTCGCAG_GCATTAAG_E0..      4546
+# 		 4     GCGTTAAA_TGGAAATC_C0..     12365
+# 		 5     TGGATCTG_ATCGAATG_B0..      5383
+# 		 ...                      ...       ...
+# 		 81725 CTCATGGG_TATTTGCG_F0..         1
+# 		 81726 CGTACTAG_CGATAGGG_B0..         2
+# 		 81727 TAAGGCGA_GGTGAAGG_F0..         1
+# 		 81728 GTATTCGG_AGAGTAGA_F0..         1
+# 		 81729 GGAGTAAG_GTAAGGAG_D0..         1
+# 
+# Somewhat insane: Rduckhts has a WASM hook already built-in
+
+# see also https://github.com/Genentech/DuckDBGRanges for more 
+# and https://github.com/Genentech/DuckDBDataFrame for more-er
+# unfortunately both of these require arrow which takes FOREVER-ER to install
 
 # see https://bwlewis.github.io/duckdb_and_r/ranges/ranges_redux.html
