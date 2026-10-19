@@ -155,5 +155,24 @@ describe("FletchR", {
       tolerance = 1e-4
     )
     })
+  
+  describe("NMF method runs",{
+    it("runs NMF",{
+      SCE = addIterativeLSI(
+        x = SCE, 
+        name = "testNMF",
+        useMatrix = "counts",
+        preTfIdf = NULL, 
+        binarize = T, 
+        nDimensions = 5,
+        outlierQuantile = c(0,1),
+        varFeatures = 1000,
+        method = "NMF")
+      
+      testthat::expect_true("testNMF" %in% SingleCellExperiment::reducedDimNames(SCE))
+      })
+    # it(,{})
 
+
+    })
 })

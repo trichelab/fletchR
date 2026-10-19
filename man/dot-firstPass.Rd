@@ -17,6 +17,7 @@
   totalFeatures = 5e+05,
   depthCol = "nFrags",
   scaleTo = 10000,
+  method = "SVD",
   seed = 1
 )
 }
@@ -44,6 +45,8 @@
 \item{depthCol}{colData column holding sequencing depth ("nFrags")}
 
 \item{scaleTo}{scale factor for TF-IDF normalization (10000)}
+
+\item{method}{matrix decomposition method (SVD,NMF)}
 
 \item{seed}{random seed (1)}
 }

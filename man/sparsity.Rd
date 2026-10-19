@@ -6,7 +6,7 @@
 \alias{sparsity,SummarizedExperiment-method}
 \title{compute sparsity for a Matrix, SummarizedExperiment, or SingleCellExperiment}
 \usage{
-sparsity(object)
+sparsity(object, ...)
 
 \S4method{sparsity}{Matrix}(object)
 

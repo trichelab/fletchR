@@ -16,6 +16,7 @@
   varFeatures = 25000,
   totalFeatures = 5e+05,
   scaleTo = 10000,
+  method = "SVD",
   seed = 1
 )
 }
@@ -41,6 +42,8 @@
 \item{totalFeatures}{number of features considered for feature selection (500000)}
 
 \item{scaleTo}{scale factor for normalization (10000)}
+
+\item{method}{matrix decomposition method (SVD,NMF)}
 
 \item{seed}{random seed (1)}
 }

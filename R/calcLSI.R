@@ -3,15 +3,18 @@
 #' @param mat Feature-by-cell matrix (e.g. TF-IDF).
 #' @param nDimensions Number of singular values to calculate.
 #' @param outliers Logical vector indicating outlier cells to ignore during SVD fitting.
+#' @param seed Set seed
 #' @return A list containing cell-by-dimension projected matrix and svd result
 #' @import SingleCellExperiment, irlba
 calcLSI <- function(mat,
                     nDimensions = 30,
-                    outliers = NULL) {
+                    outliers = NULL,
+                    seed = 1) {
   if (is.null(outliers)) {
     outliers <- rep(FALSE, ncol(mat))
   }
   message("Running SVD...")
+  set.seed(seed)
   mat = mat[rowSums(mat[, !outliers]) > 0, ]
   svd <- irlba::irlba(mat[, !outliers, drop = FALSE], nDimensions, nDimensions)
   

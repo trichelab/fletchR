@@ -14,6 +14,7 @@
 #' @param totalFeatures   number of features considered for feature selection (500000)
 #' @param depthCol        colData column holding sequencing depth ("nFrags")
 #' @param scaleTo         scale factor for normalization (10000)
+#' @param method          matrix decomposition method (SVD,NMF)
 #' @param seed            random seed (1)
 #'
 #' @return                list containing LSI, selected features, and TF-IDF result
@@ -42,6 +43,7 @@ featureSelectionLSI = function(x,
                                totalFeatures = 500000,
                                depthCol = "nFrags",
                                scaleTo = 10000,
+                               method = "SVD",
                                seed = 1) {
   stopifnot(depthCol %in% names(SummarizedExperiment::colData(x)))
   # set.seed(seed)
@@ -56,8 +58,8 @@ featureSelectionLSI = function(x,
     outlierQuantile = outlierQuantile,
     varFeatures = varFeatures,
     totalFeatures = totalFeatures,
-    # depthCol = depthCol,
     scaleTo = scaleTo,
+    method = method,
     seed = seed
   )
   
@@ -85,9 +87,9 @@ featureSelectionLSI = function(x,
       nDimensions = nDimensions,
       varFeatures = varFeatures,
       totalFeatures = totalFeatures,
-      # depthCol = depthCol,
       scaleTo = scaleTo,
       outlierQuantile = outlierQuantile,
+      method = method,
       seed = seed
     )
     
@@ -124,6 +126,7 @@ featureSelectionLSI = function(x,
 #' @param totalFeatures   number of features considered for feature selection (500000)
 #' @param depthCol        colData column holding sequencing depth ("nFrags")
 #' @param scaleTo         scale factor for TF-IDF normalization (10000)
+#' @param method          matrix decomposition method (SVD,NMF)
 #' @param seed            random seed (1)
 #'
 #' @return                list containing LSI, selected features, and TF-IDF result
@@ -141,6 +144,7 @@ featureSelectionLSI = function(x,
                       totalFeatures = 500000,
                       depthCol = "nFrags",
                       scaleTo = 10000,
+                      method = "SVD",
                       seed = 1) {
   set.seed(seed)
   mat = filterAndGetMat(
@@ -178,8 +182,13 @@ featureSelectionLSI = function(x,
   }
   
   outlierIdx = colnames(tfidfRes$tfidf) %in% tfidfRes$outliers
-  lem = calcLSI(mat=tfidfRes$tfidf,nDimensions=nDimensions,outliers=outlierIdx)
-  
+  if(method =="SVD"){
+    lem = calcLSI(mat=tfidfRes$tfidf,nDimensions=nDimensions,outliers=outlierIdx,seed = seed)
+  }else if(method == "NMF"){
+    lem = calcNMF(mat=tfidfRes$tfidf,nDimensions=nDimensions,outliers=outlierIdx,seed = seed)
+  }else{
+    stop("Invalid Method. Choose SVD or NMF")
+  }
   lem@metadata$selectedFeatures = selectedFeatures
   lem@metadata$tfidf = tfidfRes
   
@@ -200,6 +209,7 @@ featureSelectionLSI = function(x,
 #' @param varFeatures     number of variable features to select (25000)
 #' @param totalFeatures   number of features considered for feature selection (500000)
 #' @param scaleTo         scale factor for normalization (10000)
+#' @param method          matrix decomposition method (SVD,NMF)
 #' @param seed            random seed (1)
 #'
 #' @return                list containing LSI, selected features, and TF-IDF result
@@ -217,6 +227,7 @@ featureSelectionLSI = function(x,
                           totalFeatures = 500000,
                           # depthCol = "nFrags",
                           scaleTo = 10000,
+                          method = "SVD",
                           seed = 1) {
   set.seed(seed)
   mat = filterAndGetMat(
@@ -257,7 +268,13 @@ featureSelectionLSI = function(x,
   }
   
   outlierIdx = colnames(tfidfRes$tfidf) %in% tfidfRes$outliers
-  lem = calcLSI(mat=tfidfRes$tfidf,nDimensions=nDimensions,outliers=outlierIdx)
+  if(method =="SVD"){
+    lem = calcLSI(mat=tfidfRes$tfidf,nDimensions=nDimensions,outliers=outlierIdx,seed = seed)
+  }else if(method == "NMF"){
+    lem = calcNMF(mat=tfidfRes$tfidf,nDimensions=nDimensions,outliers=outlierIdx,seed = seed)
+  }else{
+    stop("Invalid Method. Choose SVD or NMF")
+  }
   
   lem@metadata$selectedFeatures = selectedFeatures
   lem@metadata$tfidf = tfidfRes
