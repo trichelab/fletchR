@@ -41,20 +41,9 @@ addLSI <- function(x,
   # message("Running SVD...")
 
   outliers = getOutliersIdx(x,useMatrix=useMatrix)
-  matSVD <- calcLSI(mat=mat, outliers=outliers, nDimensions=nDimensions, scaleDims=scaleDims)
-  # mat = mat[rowSums(mat[,!outliers])>0,]
-  # svd <- irlba::irlba(mat[,!outliers], nDimensions, nDimensions)
+  lem <- calcLSI(mat=mat, outliers=outliers, nDimensions=nDimensions)
   
-  # matSVD = projectSVD(mat,svd$u,svd$d,nDimensions)
-  # if (scaleDims) {
-  #   # check and see if this is doing it right!
-  #   message("Scaling matSVD...")
-  #   matSVD <- rowZscores(matSVD)
-  # }
-
-  # matSVD <- removeDepthCorrelatedDims(projectedMat=matSVD, depth=colData(x)[[depth]], corCutOff=corCutOff)
-
-  reducedDim(x, name) <- matSVD
+  reducedDim(x, name) <- lem
   message("Done.")
   return(x) 
 }

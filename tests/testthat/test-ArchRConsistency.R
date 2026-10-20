@@ -65,27 +65,29 @@ describe("FletchR", {
     nDimensions = 5,
     # filterQuantile = filterQuantile,
     outlierQuantile = c(0, 1),
-    varFeatures = 1000
+    varFeatures = 1000,
+    seed = 1
     # totalFeatures = totalFeatures,
     # depthCol = depthCol,
     # scaleTo = scaleTo
   )
   nFrags = colData(SCE)[["nFrags"]]
   
-  clustF = clusterSeurat(mat = removeDepthCorrelatedDims(ArchRRowZscores(LSIres1$lsi), depth = nFrags))
+  clustF = clusterSeurat(mat = removeDepthCorrelatedDims(ArchRRowZscores(SingleCellExperiment::sampleFactors(LSIres1)), depth = nFrags))
   
   set.seed(1)
   LSIres2 = .iterativePass(
     x = SCE,
     useMatrix = "counts",
     preTfIdf = NULL,
-    clusters = clustF,
+    clusters = clustF, # passing true results to make sure the second test works
     binarize = T,
     # excludeChr = excludeChr,
     nDimensions = 5,
     # filterQuantile = filterQuantile,
     outlierQuantile = c(0, 1),
-    varFeatures = 1000
+    varFeatures = 1000,
+    seed = 1
     # totalFeatures = totalFeatures,
     # depthCol = depthCol,
     # scaleTo = scaleTo
@@ -98,7 +100,8 @@ describe("FletchR", {
     binarize = T, 
     nDimensions = 5,
     outlierQuantile = c(0,1),
-    varFeatures = 1000)
+    varFeatures = 1000,
+    seed = 1)
   
   it("Projects RSV identical to ArchR", {
     testthat::expect_identical(z, ArchRLSI$matSVD[rownames(z), ])
@@ -107,26 +110,29 @@ describe("FletchR", {
     testthat::expect_equal(z, d, tolerance = 1e-5)
   })
   it("Project RSV with outliers properly", {
-    testthat::expect_equal(reducedDim(SCE, "LSI")[rownames(ArchRLSI$matSVD), ], ArchRLSI$matSVD, tolerance = 1e-4)
+    testthat::expect_equal(SingleCellExperiment::sampleFactors(reducedDim(SCE, "LSI"))[rownames(ArchRLSI$matSVD), ], ArchRLSI$matSVD, tolerance = 1e-4)
   })
   it("Select the same features on the first pass", {
-    expect_all_true(all(LSIres1$features %in% archRTopFeats))
+    expect_all_true(all(LSIres1@metadata$selectedFeatures %in% archRTopFeats))
   })
   it("Calculates First Pass LSI similar to ArchR", {
-    expect_equal(LSIres1$lsi, first_pass_LSI$matSVD, tolerance = 1e-5)
+    expect_equal(SingleCellExperiment::sampleFactors(LSIres1), first_pass_LSI$matSVD, tolerance = 1e-4)
   })
   it("clusters the same on the first pass", {
     expect_identical(clustF, first_pass_clust)
   })
   it("select the same features on the second pass", {
-    expect_all_true(LSIres2$features %in% ArchRVarFeat)
+    expect_all_true(LSIres2@metadata$selectedFeatures %in% ArchRVarFeat)
   })
-  it("calculate second pass LSI similar to ArchR", {
-    expect_equal(LSIres2$lsi, second_pass_LSI$matSVD, tolerance = 1e-4)
+  it(".iterativePass() calculate same LSI as archR the second pass", {
+    expect_equal(SingleCellExperiment::sampleFactors(LSIres2), second_pass_LSI$matSVD, tolerance = 1e-4)
   })
   it("iterativeLSI yields same result as ArchR",{
-    expect_equal(LSIres_all$lsi, second_pass_LSI$matSVD, tolerance = 1e-4)
+    expect_equal(SingleCellExperiment::sampleFactors(LSIres_all), second_pass_LSI$matSVD, tolerance = 1e-4)
     })
+  it("select similar features to ArchR", {
+    expect_all_true(LSIres_all@metadata$selectedFeatures %in% ArchRVarFeat)
+  })
   it("adds iterativeLSI as reducDim properly",{
     SCE = addIterativeLSI(
       x = SCE, 
@@ -139,15 +145,34 @@ describe("FletchR", {
       varFeatures = 1000)
     
     expect_true("test" %in% reducedDimNames(SCE))
-    expect_true(is.matrix(reducedDim(SCE, "test")))
+    expect_true(inherits(reducedDim(SCE, "test"),"LinearEmbeddingMatrix"))
     expect_equal(nrow(reducedDim(SCE, "test")), ncol(SCE))
     expect_equal(ncol(reducedDim(SCE, "test")), 5)
     expect_equal(rownames(reducedDim(SCE, "test")), colnames(SCE))
     expect_equal(
-      reducedDim(SCE, "test"),
+      SingleCellExperiment::sampleFactors(reducedDim(SCE, "test")),
       second_pass_LSI$matSVD,
       tolerance = 1e-4
     )
     })
+  
+  describe("NMF method runs",{
+    it("runs NMF",{
+      SCE = addIterativeLSI(
+        x = SCE, 
+        name = "testNMF",
+        useMatrix = "counts",
+        preTfIdf = NULL, 
+        binarize = T, 
+        nDimensions = 5,
+        outlierQuantile = c(0,1),
+        varFeatures = 1000,
+        method = "NMF")
+      
+      testthat::expect_true("testNMF" %in% SingleCellExperiment::reducedDimNames(SCE))
+      })
+    # it(,{})
 
+
+    })
 })

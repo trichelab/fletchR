@@ -20,7 +20,9 @@ iSEEarchR <- function(x,rdims = NULL ,colorColumn = "Clusters", dryRun=FALSE) {
 
   # # if reducedDim(x) columns aren't already in colData(x), add them
   # rdims <- intersect(c("LSI", "NMF"), reducedDimNames(x))
-  rdims = reducedDimNames(x)
+  if(is.null(rdims)){
+    rdims = reducedDimNames(x)
+  }
   for (rdim in rdims) x <- .reducedDimsAsColData(x, rdim=rdim)
 
   if (dryRun) {

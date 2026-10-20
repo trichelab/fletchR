@@ -65,7 +65,7 @@ addIterativeLSI <- function(x,
     seed = seed
   )
   
-  reducedDim(x, name) <- LSIres$lsi
+  reducedDim(x, name) <- LSIres
   message("Done.")
   return(x)
 }

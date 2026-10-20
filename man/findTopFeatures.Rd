@@ -2,7 +2,7 @@
 % Please edit documentation in R/findTopFeatures.R
 \name{findTopFeatures}
 \alias{findTopFeatures}
-\title{Find top features based on top accessible features}
+\title{Select features based on across cell accessibility}
 \usage{
 findTopFeatures(
   mat,
@@ -15,7 +15,7 @@ findTopFeatures(
 \item{mat}{a sparse matrix (dgCMatrix) of features x cells}
 
 \item{filterQuantile}{numeric value between 0 and 1; the quantile
-of features to filter out from the top of the distribution}
+of features to keep}
 
 \item{varFeatures}{integer; the number of features to return after filtering}
 
@@ -26,5 +26,5 @@ of features to filter out from the top of the distribution}
 }\if{html}{\out{</div>}}
 }
 \description{
-Find top features based on top accessible features
+Select features based on across cell accessibility
 }

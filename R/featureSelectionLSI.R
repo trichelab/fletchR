@@ -14,6 +14,7 @@
 #' @param totalFeatures   number of features considered for feature selection (500000)
 #' @param depthCol        colData column holding sequencing depth ("nFrags")
 #' @param scaleTo         scale factor for normalization (10000)
+#' @param method          matrix decomposition method (SVD,NMF)
 #' @param seed            random seed (1)
 #'
 #' @return                list containing LSI, selected features, and TF-IDF result
@@ -42,8 +43,10 @@ featureSelectionLSI = function(x,
                                totalFeatures = 500000,
                                depthCol = "nFrags",
                                scaleTo = 10000,
+                               method = "SVD",
                                seed = 1) {
   stopifnot(depthCol %in% names(SummarizedExperiment::colData(x)))
+  # set.seed(seed)
   LSIres = .firstPass(
     x = x,
     useMatrix = useMatrix,
@@ -55,8 +58,9 @@ featureSelectionLSI = function(x,
     outlierQuantile = outlierQuantile,
     varFeatures = varFeatures,
     totalFeatures = totalFeatures,
-    # depthCol = depthCol,
-    scaleTo = scaleTo
+    scaleTo = scaleTo,
+    method = method,
+    seed = seed
   )
   
   if (iter <= 1) {
@@ -64,7 +68,10 @@ featureSelectionLSI = function(x,
   }
   
   clusters = clusterSeurat(
-    mat = removeDepthCorrelatedDims(projectedMat = ArchRRowZscores(LSIres$lsi),depth = colData(x)[[depthCol]],corCutOff = corCutOff)
+    mat = removeDepthCorrelatedDims(
+      projectedMat = ArchRRowZscores(SingleCellExperiment::sampleFactors(LSIres)),
+      depth = colData(x)[[depthCol]],
+      corCutOff = corCutOff)
     )
   
   prevLSI = LSIres
@@ -80,13 +87,17 @@ featureSelectionLSI = function(x,
       nDimensions = nDimensions,
       varFeatures = varFeatures,
       totalFeatures = totalFeatures,
-      # depthCol = depthCol,
       scaleTo = scaleTo,
-      outlierQuantile = outlierQuantile
+      outlierQuantile = outlierQuantile,
+      method = method,
+      seed = seed
     )
     
     clusters = clusterSeurat(
-      mat = removeDepthCorrelatedDims(projectedMat = ArchRRowZscores(currentLSI$lsi),depth = colData(x)[[depthCol]],corCutOff = corCutOff)
+      mat = removeDepthCorrelatedDims(
+        projectedMat = ArchRRowZscores(SingleCellExperiment::sampleFactors(currentLSI)),
+        depth = colData(x)[[depthCol]],
+        corCutOff = corCutOff)
     )
     
     if (length(unique(clusters)) == 1) {
@@ -115,6 +126,7 @@ featureSelectionLSI = function(x,
 #' @param totalFeatures   number of features considered for feature selection (500000)
 #' @param depthCol        colData column holding sequencing depth ("nFrags")
 #' @param scaleTo         scale factor for TF-IDF normalization (10000)
+#' @param method          matrix decomposition method (SVD,NMF)
 #' @param seed            random seed (1)
 #'
 #' @return                list containing LSI, selected features, and TF-IDF result
@@ -132,6 +144,7 @@ featureSelectionLSI = function(x,
                       totalFeatures = 500000,
                       depthCol = "nFrags",
                       scaleTo = 10000,
+                      method = "SVD",
                       seed = 1) {
   set.seed(seed)
   mat = filterAndGetMat(
@@ -163,22 +176,24 @@ featureSelectionLSI = function(x,
       mat,
       outlierQuantiles = outlierQuantile,
       excludeZeros = TRUE,
-      scaleTo = scaleTo
-    )
+      scaleTo = scaleTo)
     rm(mat)
     gc()
   }
   
   outlierIdx = colnames(tfidfRes$tfidf) %in% tfidfRes$outliers
-  projMat = calcLSI(mat=tfidfRes$tfidf,nDimensions=nDimensions,outliers=outlierIdx)
-  # projMat = removeDepthCorrelatedDims(projectedMat = projMat, depth = colData(x)[[depthCol]])
+  if(method =="SVD"){
+    lem = calcLSI(mat=tfidfRes$tfidf,nDimensions=nDimensions,outliers=outlierIdx,seed = seed)
+  }else if(method == "NMF"){
+    lem = calcNMF(mat=tfidfRes$tfidf,nDimensions=nDimensions,outliers=outlierIdx,seed = seed)
+  }else{
+    stop("Invalid Method. Choose SVD or NMF")
+  }
+  lem@metadata$selectedFeatures = selectedFeatures
+  lem@metadata$tfidf = tfidfRes
   
   
-  return(list(
-    lsi = projMat,
-    features = selectedFeatures,
-    tfidf = tfidfRes
-  ))
+  return(lem)
 }
 
 #' perform an iterative pass of LSI
@@ -194,6 +209,7 @@ featureSelectionLSI = function(x,
 #' @param varFeatures     number of variable features to select (25000)
 #' @param totalFeatures   number of features considered for feature selection (500000)
 #' @param scaleTo         scale factor for normalization (10000)
+#' @param method          matrix decomposition method (SVD,NMF)
 #' @param seed            random seed (1)
 #'
 #' @return                list containing LSI, selected features, and TF-IDF result
@@ -211,6 +227,7 @@ featureSelectionLSI = function(x,
                           totalFeatures = 500000,
                           # depthCol = "nFrags",
                           scaleTo = 10000,
+                          method = "SVD",
                           seed = 1) {
   set.seed(seed)
   mat = filterAndGetMat(
@@ -251,14 +268,19 @@ featureSelectionLSI = function(x,
   }
   
   outlierIdx = colnames(tfidfRes$tfidf) %in% tfidfRes$outliers
-  projMat = calcLSI(mat=tfidfRes$tfidf,nDimensions=nDimensions,outliers=outlierIdx)
-  # projMat = removeDepthCorrelatedDims(projectedMat = projMat, depth = colData(x)[[depthCol]])
+  if(method =="SVD"){
+    lem = calcLSI(mat=tfidfRes$tfidf,nDimensions=nDimensions,outliers=outlierIdx,seed = seed)
+  }else if(method == "NMF"){
+    lem = calcNMF(mat=tfidfRes$tfidf,nDimensions=nDimensions,outliers=outlierIdx,seed = seed)
+  }else{
+    stop("Invalid Method. Choose SVD or NMF")
+  }
   
-  return(list(
-    lsi = projMat,
-    features = selectedFeatures,
-    tfidf = tfidfRes
-  ))
+  lem@metadata$selectedFeatures = selectedFeatures
+  lem@metadata$tfidf = tfidfRes
+  
+  
+  return(lem)
 }
 
 #' retrieve a precomputed TF-IDF matrix

@@ -1,8 +1,8 @@
-#' Find top features based on top accessible features
+#' Select features based on across cell accessibility
 #' 
 #' @param mat           a sparse matrix (dgCMatrix) of features x cells
 #' @param filterQuantile numeric value between 0 and 1; the quantile
-#'                       of features to filter out from the top of the distribution
+#'                       of features to keep
 #' @param varFeatures    integer; the number of features to return after filtering
 #' @param totalFeatures  integer; the total number of features in the matrix
 #' @return               character vector of feature names

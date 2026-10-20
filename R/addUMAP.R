@@ -35,16 +35,20 @@ addUMAP <- function(x, reducedDims=NULL, name="UMAP", nNeighbors=40, minDist=0.4
       stop("Neither NMF nor LSI in reducedDimNames(x), need to supply one")
     }
   }
-
+  rd = reducedDim(x, reducedDims)
+  if(inherits(rd,"LinearEmbeddingMatrix")){
+    rd = SingleCellExperiment::sampleFactors(rd)
+  }
   if (!is.null(model)) {
     message("Using pre-computed model for UMAP projection...")
     res <- model
     message("Computing umap_transform() with ", reducedDims, " as input...")
-    res$embedding <- uwot::umap_transform(reducedDim(x, reducedDims), 
+    
+    res$embedding <- uwot::umap_transform(rd, 
                                           model=model, ...)
   } else {
     message("Computing UMAP model using ", reducedDims, " as input...")
-    res <- uwot::umap(reducedDim(x, reducedDims), n_neighbors=nNeighbors, 
+    res <- uwot::umap(rd, n_neighbors=nNeighbors, 
                       metric=metric, min_dist=minDist, ret_model=TRUE, ...)
   }
   message("Saving model to metadata(x)$UMAP...")
