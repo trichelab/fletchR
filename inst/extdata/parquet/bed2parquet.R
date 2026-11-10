@@ -391,19 +391,28 @@ library(fletchR)
 packageVersion("fletchR")
 # [1] '0.50.2'
 
-sapply(bf$filename, fragmentsToParquet)
 # AE_Hs_5Leuk_Ms_H3K27me3_H19_Rb_DEM_PA1241_112525.parquet written to disk.
 # ...
+# this happens at varying speeds depending on the file size 
+# ...
+checkParquet <- function(bed) {
+  file.exists(sub("\\.(bed|tsv)(\\.gz)?", ".parquet", bed))
+}
+bf$parquet <- sapply(bf$filename, checkParquet)
+sapply(subset(bf, !parquet)$filename, fragmentsToParquet)
+bf$parquet <- sapply(bf$filename, checkParquet)
+stopifnot(all(bf$parquet))
 
+if (FALSE) { 
+  # index this 
+  dbGetQuery(con, "SELECT duckhts_cgranges_create('tiles_50kb_hg38_idx')")
+  #   duckhts_cgranges_create('tiles_50kb_hg38_idx')
+  #1                                           TRUE
 
-# index this 
-dbGetQuery(con, "SELECT duckhts_cgranges_create('tiles_50kb_hg38_idx')")
-#   duckhts_cgranges_create('tiles_50kb_hg38_idx')
-#1                                           TRUE
-
-dbGetQuery(con, "SELECT duckhts_cgranges_destroy('tiles_50kb_hg38_idx')")
-#   duckhts_cgranges_destroy('tiles_50kb_hg38_idx')
-#1                                           TRUE
+  dbGetQuery(con, "SELECT duckhts_cgranges_destroy('tiles_50kb_hg38_idx')")
+  #   duckhts_cgranges_destroy('tiles_50kb_hg38_idx')
+  #1                                           TRUE
+}
 
 dbGetQuery(con, 
            paste0("SELECT * FROM duckhts_cgranges_from_table(",
@@ -487,10 +496,8 @@ system.time(
     output = "encodeV2blacklist.hg38.parquet",
     header_names = c("chrom",
                      "start",
-                     "end",
-                     "type"),
+                     "end"),
     column_types = c("VARCHAR",
-                     "BIGINT",
                      "BIGINT",
                      "BIGINT"),
     compression = "zstd"
@@ -500,8 +507,7 @@ system.time(
 #   0.062   0.004   0.134 
 
 blacklist_gr <- DuckDBGRanges("encodeV2blacklist.hg38.parquet", 
-                              seqnames="chrom", start="start", end="end",
-                              mcols=c("type"))
+                              seqnames="chrom", start="start", end="end")
 
 system.time(excludefrags <- queryHits(findOverlaps(ddb_gr, blacklist_gr)))
 # 
@@ -690,17 +696,11 @@ rduckhts_tabix(con,
                path = "tiles.hg38.50kb.bed.bgz",
                header_names = c("chrom",
                                 "start",
-                                "end",
-                                "name",
-                                "score"),
+                                "end"),
                column_types = c("contig",
                                 "BIGINT",
-                                "BIGINT",
-                                "NULL",
-                                "NULL"),
+                                "BIGINT"),
                overwrite = TRUE)
-dbExecute(con, "ALTER TABLE tiles_50kb_hg38 DROP name")
-dbExecute(con, "ALTER TABLE tiles_50kb_hg38 DROP score")
 
 dbGetQuery(con,
            paste0("SELECT
@@ -721,8 +721,14 @@ dbGetQuery(con,
                    ORDER BY frags DESC"))
 
 
+dbGetQuery(con, 
+           paste0("SELECT * FROM duckhts_cgranges_from_table(",
+                  "'tiles_50kb_hg38_idx', 'tiles_50kb_hg38', ",
+                  "'chrom', 'start', 'end')"))
+#   indexed
+# 1    TRUE
 # time it
-system.time(
+system.time(res <- 
             dbGetQuery(con,
            paste0("SELECT
                    name, chrom, start, \"end\",
@@ -739,14 +745,14 @@ system.time(
                             chrom, 
                             start, 
                             \"end\")
-                   ORDER BY frags DESC"))
+                   ORDER BY chrom, start, \"end\", name"))
             )
 #    user  system elapsed 
 #   2.995   2.407   1.283 
 
 
 # same but for a very large file
-system.time(
+system.time(res2 <- 
             dbGetQuery(con,
            paste0("SELECT
                    name, chrom, start, \"end\",
@@ -763,7 +769,84 @@ system.time(
                             chrom, 
                             start, 
                             \"end\")
-                   ORDER BY frags DESC"))
+                   ORDER BY chrom, start, \"end\", name"))
             )
 #    user  system elapsed 
-# 171.435 292.717  53.118 
+# 267.436  39.505 118.049 
+
+# how many cells is this?
+system.time(res3 <- 
+            dbGetQuery(con,
+           paste0("SELECT
+                   name, count(name) AS frags 
+                   FROM read_parquet('AE_Hs_6Leuk_Ms_H3K27me3_H19_Rb_DEM_PA1241_101825.parquet')
+                   WHERE chrom IN ('chr1', 'chr2', 'chr3', 'chr4', 'chr5', 
+                                   'chr6', 'chr7', 'chr8', 'chr9', 'chr10', 
+                                   'chr11', 'chr12', 'chr13', 'chr14', 'chr15',
+                                   'chr16', 'chr17', 'chr18', 'chr19', 'chr20',
+                                   'chr21', 'chr22')
+                   GROUP BY name
+                   ORDER BY frags DESC")
+           )
+)
+#    user  system elapsed 
+#  32.863   7.286   0.576 
+
+
+
+res3
+# data frame with 482050 rows and 2 columns
+#                          name     frags
+#                   <character> <numeric>
+# 1      TCTTATTA_TATTTGCG_C0..    187204
+# 2      GAGCACGT_GTAAGGAG_C0..    170432
+# 3      CCTCGCAG_TGCATACT_D0..    151624
+# 4      TCCTGAGC_GATTCCCA_D0..    130644
+# 5      CCGTTTGT_GCAGCCTC_C0..    122733
+# ...                       ...       ...
+# 482046 CAAGAATT_AGCCGTTC_E0..         1
+# 482047 ATGATGAT_GAGACGTG_F1..         1
+# 482048 TAGGCATG_AGAGATCT_B0..         1
+# 482049 TAAGGCGA_CCTGCGGG_D0..         1
+# 482050 AAATACAG_TGATTGTT_B0..         1
+
+
+# how many usable cells?   (frags >= 250) 
+system.time(res4 <- 
+            dbGetQuery(con,
+           paste0("SELECT
+                   name, count(name) AS frags 
+                   FROM read_parquet('AE_Hs_6Leuk_Ms_H3K27me3_H19_Rb_DEM_PA1241_101825.parquet')
+                   WHERE chrom IN ('chr1', 'chr2', 'chr3', 'chr4', 'chr5', 
+                                   'chr6', 'chr7', 'chr8', 'chr9', 'chr10', 
+                                   'chr11', 'chr12', 'chr13', 'chr14', 'chr15',
+                                   'chr16', 'chr17', 'chr18', 'chr19', 'chr20',
+                                   'chr21', 'chr22')
+                   GROUP BY name
+                   HAVING frags >= 250
+                   ORDER BY frags DESC")
+           )
+)
+#    user  system elapsed 
+#  32.607   6.701   0.410 
+
+res4
+# data frame with 47029 rows and 2 columns
+#                         name     frags
+#                  <character> <numeric>
+# 1     TCTTATTA_TATTTGCG_C0..    187204
+# 2     GAGCACGT_GTAAGGAG_C0..    170432
+# 3     CCTCGCAG_TGCATACT_D0..    151624
+# 4     TCCTGAGC_GATTCCCA_D0..    130644
+# 5     CCGTTTGT_GCAGCCTC_C0..    122733
+# ...                      ...       ...
+# 47025 TTTCGTCA_TTTCTAGC_D0..       250
+# 47026 AAACGGTC_TAACCAAG_C0..       250
+# 47027 ATTGCCGG_CTCTCTAT_C0..       250
+# 47028 AATTCGTT_CTCTCTAT_D0..       250
+# 47029 CCAACACG_ACATTCGT_G1..       250
+
+
+# OK so let's see whether we can blacklist fragments before doing this 
+
+

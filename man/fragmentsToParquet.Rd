@@ -20,14 +20,17 @@ fragmentsToParquet(bed, con = NULL, parquet = NULL, region = NULL, ...)
 \value{
 \if{html}{\out{<div class="sourceCode">}}\preformatted{         TRUE on success, FALSE on failure. 
 }\if{html}{\out{</div>}}
-
-Only the first four columns (chrom, start, end, name) are imported.
+}
+\description{
+convert a fragment file to a parquet file, optionally restricting its scope
+}
+\details{
+Can be used as a DuckDBGRanges backend via ddbGRangesFromParquet.
+Only the first four columns (chrom, chromStart, chromEnd, name) are imported.
 region is expected to be a single string, e.g. "chr8:11808264-11808510"
 although it sure would be handy to have multiple strings, e.g. for black-
 listed standard chromosomes in the default case
 see https://duckdb.org/community_extensions/extensions/duckhts
 and https://cran.r-project.org/web/packages/Rduckhts/refman/Rduckhts.html
-}
-\description{
-convert a fragment file to a parquet file, optionally restricting its scope
+We might start using DuckDBGRanges for region filtering at some point.
 }

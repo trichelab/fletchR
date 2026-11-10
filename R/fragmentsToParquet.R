@@ -8,12 +8,14 @@
 #' 
 #' @return              TRUE on success, FALSE on failure. 
 #'
-#' Only the first four columns (chrom, start, end, name) are imported. 
+#' @details Can be used as a DuckDBGRanges backend via ddbGRangesFromParquet.
+#' Only the first four columns (chrom, chromStart, chromEnd, name) are imported.
 #' region is expected to be a single string, e.g. "chr8:11808264-11808510"
 #' although it sure would be handy to have multiple strings, e.g. for black-
 #' listed standard chromosomes in the default case 
 #' see https://duckdb.org/community_extensions/extensions/duckhts
 #' and https://cran.r-project.org/web/packages/Rduckhts/refman/Rduckhts.html
+#' We might start using DuckDBGRanges for region filtering at some point. 
 #' 
 #' @import Rduckhts
 #' @import DBI
@@ -40,8 +42,8 @@ fragmentsToParquet <- function(bed, con=NULL, parquet=NULL, region=NULL, ...) {
       path = bed,
       output = parquet, 
       header_names = c("chrom",
-                       "start",
-                       "end",
+                       "chromStart",
+                       "chromEnd",
                        "name"),
       column_types = c("VARCHAR",
                        "BIGINT",
