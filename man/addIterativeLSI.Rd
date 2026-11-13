@@ -2,7 +2,7 @@
 % Please edit documentation in R/addIterativeLSI.R
 \name{addIterativeLSI}
 \alias{addIterativeLSI}
-\title{add iterative LSI results to an SCE}
+\title{Add iterative LSI results to an SCE}
 \usage{
 addIterativeLSI(
   x,
@@ -13,11 +13,18 @@ addIterativeLSI(
   corCutOff = 0.75,
   excludeChr = c("chrM", "chrX", "chrY"),
   nDimensions = 30,
+  filterQuantile = 0.995,
   outlierQuantile = c(0.02, 0.98),
   varFeatures = 25000,
   totalFeatures = 5e+05,
   depthCol = "nFrags",
+  outlierCellsCol = NULL,
   scaleTo = 10000,
+  method = "SVD",
+  multimodal = FALSE,
+  scaleMethod = "Frobenius",
+  balanceFirstSelection = FALSE,
+  balanceIterativeSelection = FALSE,
   name = "iterativeLSI",
   seed = 1,
   ...
@@ -40,6 +47,8 @@ addIterativeLSI(
 
 \item{nDimensions}{number of LSI dimensions (30)}
 
+\item{filterQuantile}{quantile for filtering highly accessible features (0.995)}
+
 \item{outlierQuantile}{quantiles for excluding depth outliers during LSI}
 
 \item{varFeatures}{number of variable features to select (25000)}
@@ -48,20 +57,33 @@ addIterativeLSI(
 
 \item{depthCol}{colData column holding sequencing depth ("nFrags")}
 
+\item{outlierCellsCol}{name of logical colData column indicating outlier cells;
+NULL uses quantile-based outlier detection}
+
 \item{scaleTo}{scale factor for normalization (10000)}
+
+\item{method}{matrix decomposition method ("SVD" or "NMF")}
+
+\item{multimodal}{logical indicating multimodal data (FALSE)}
+
+\item{scaleMethod}{modality scaling method ("Frobenius" or "minMax")}
+
+\item{balanceFirstSelection}{logical to balance features in first-pass selection}
+
+\item{balanceIterativeSelection}{logical to balance features in iterative selection}
 
 \item{name}{name of reducedDim to store the LSI embedding ("iterativeLSI")}
 
 \item{seed}{random seed (1)}
 
-\item{...}{additional arguments}
+\item{...}{additional arguments passed to featureSelectionLSI}
 }
 \value{
 \if{html}{\out{<div class="sourceCode">}}\preformatted{           SingleCellExperiment with reducedDim(x, name)
 }\if{html}{\out{</div>}}
 }
 \description{
-add iterative LSI results to an SCE
+Add iterative LSI results to an SCE
 }
 \details{
 \if{html}{\out{<div class="sourceCode">}}\preformatted{          Runs featureSelectionLSI and stores the final LSI

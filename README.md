@@ -7,6 +7,15 @@ Turns ArchR projects into iSEE-able SingleCellExperiments.  Also allows some con
 
 ## Installing
 
+DuckDB dependencies:
+
+    devtools::install_github("Genentech/DuckDBDataFrame")
+    devtools::install_github("Genentech/DuckDBGRanges")
+    devtools::install_github("Genentech/DuckDBArray")
+    
+    # install.packages(c("BiocManager", "remotes"))
+    BiocManager::install("nanoparquet")
+
 The devel version of the package can be pulled from GitHub with BiocManager:
 
     # install.packages(c("BiocManager", "remotes"))
