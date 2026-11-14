@@ -11,8 +11,8 @@ Description: ArchR is great for single-cell chromatin analysis, but its design,
              to handle assays where a single DNA fragment can carry information
              about multiple different assays (proteins, chromatin modifications,
              transcription, DNA methylation, etc.) and jointly model the result.
-Version: 0.50.6
-Date: 2026-11-12
+Version: 0.50.14
+Date: 2026-11-14
 Authors@R: c(person("Tim", "Triche, Jr.", 
                     role=c("aut", "cre"), 
                     email="trichelab@gmail.com"),
@@ -55,7 +55,8 @@ Suggests:
     testthat,
     fastTopics,
     BiocDuckDB,
-    chromophobe
+    chromophobe,
+    REMO.v1.GRCh38
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Config/roxygen2/version: 8.1.1
