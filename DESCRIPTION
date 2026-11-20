@@ -1,6 +1,6 @@
 Package: fletchR
 Type: Package
-Title: Makes better Arrow files for single-cell multi-assay chromatin analysis
+Title: Make better Arrow files for single-cell multi-assay chromatin analysis
 Description: ArchR is great for single-cell chromatin analysis, but its design, 
              interactive tools for exploratory analyses, and kooky file formats
              leave a bit to be desired. iSEE is fantastic for exploration and 
@@ -11,8 +11,8 @@ Description: ArchR is great for single-cell chromatin analysis, but its design,
              to handle assays where a single DNA fragment can carry information
              about multiple different assays (proteins, chromatin modifications,
              transcription, DNA methylation, etc.) and jointly model the result.
-Version: 0.50.14
-Date: 2026-11-14
+Version: 0.50.20
+Date: 2026-11-20
 Authors@R: c(person("Tim", "Triche, Jr.", 
                     role=c("aut", "cre"), 
                     email="trichelab@gmail.com"),
@@ -31,11 +31,12 @@ Imports:
     SingleCellExperiment,
     SummarizedExperiment,
     MatrixGenerics,
-    DuckDBArray,
     DuckDBGRanges,
     GenomicRanges,
+    DropletUtils,
     GenomeInfoDb,
-    nanoparquet, 
+    DuckDBArray,
+    nanoparquet,
     Rduckhts,
     Seqinfo,
     scuttle,

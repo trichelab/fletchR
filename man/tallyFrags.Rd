@@ -21,7 +21,7 @@ tallyFrags(
 \arguments{
 \item{parquet}{parquet filename holding fragments, or result of a chain}
 
-\item{bins}{a GRanges, BED file, or index name (see Details)}
+\item{bins}{a basepair size, BED file, GR, or REMO.hg38 (see Details)}
 
 \item{assayType}{if bins is NULL, an assay (coCUTnTag or ATAC) for defaults}
 

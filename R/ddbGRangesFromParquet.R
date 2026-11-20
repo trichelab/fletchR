@@ -18,18 +18,17 @@
 #' 
 ddbGRangesFromParquet <- function(parquet, ...) { 
 
-  cols <- nanoparquet::read_parquet_schema(parquet)$name  
-  chrom <- intersect(c("chrom", "seqnames"), cols)[1]
-  chromStart <- intersect(c("chromStart", "start"), cols)[1]
-  chromEnd <- intersect(c("chromEnd", "end"), cols)[1]
-  name <- intersect(c("name", "names"), cols)[1]
+  cols <- detectChromStartEnd(parquet)
 
-  if (is.na(name)) { 
-    DuckDBGRanges(conn=parquet, 
-                  seqnames=chrom, start=chromStart, end=chromEnd)
+  if (is.na(cols$name)) { 
+    with(cols, 
+         DuckDBGRanges(conn=parquet, 
+                       seqnames=chrom, start=chromStart, end=chromEnd))
   } else { 
-    DuckDBGRanges(conn=parquet, 
-                  seqnames=chrom, start=chromStart, end=chromEnd, mcols=name)
+    with(cols, 
+         DuckDBGRanges(conn=parquet, 
+                       seqnames=chrom, start=chromStart, end=chromEnd, 
+                       mcols=name))
   }
 
 }

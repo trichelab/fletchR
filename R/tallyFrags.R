@@ -1,7 +1,7 @@
 #' tally fragments from a parquet table over bins into a sparse matrix
 #' 
 #' @param parquet     parquet filename holding fragments, or result of a chain
-#' @param bins        a GRanges, BED file, or index name (see Details) 
+#' @param bins        a basepair size, BED file, GR, or REMO.hg38 (see Details) 
 #' @param assayType   if bins is NULL, an assay (coCUTnTag or ATAC) for defaults
 #' @param genome      if bins is NULL, a genome (default hg38) for binning
 #' @param excludeChrs if bins is NULL, stick to standard chroms only? (TRUE) 
@@ -51,8 +51,8 @@ tallyFrags <- function(parquet, bins=NULL, assayType=c("coCUTnTag", "ATAC"), gen
 
   stopifnot(file.exists(parquet))
 
-  # refactor this out 
-  if (is.null(bins)) { 
+  # refactor this out ?
+  if (is.null(bins)) { # {{{
     availableGenomes <- c(registered_UCSC_genomes()$genome,
                           registered_NCBI_assemblies()$assembly)
     if (!genome %in% availableGenomes) {
@@ -64,28 +64,84 @@ tallyFrags <- function(parquet, bins=NULL, assayType=c("coCUTnTag", "ATAC"), gen
     } else if (assayType == 'ATAC') { 
       if (is.null(binSize)) binSize <- 500 
     }
+    message("Tiling ", genome, " with ", binSize, "kb bins...")
     bins <- tileGenome(Seqinfo(genome=genome), tilewidth=binSize, cut.last=TRUE)
     if (standardChr) {
+      message("Pruning to standard chromosomes...")
       bins <- keepStandardChromosomes(bins, pruning.mode="coarse") 
     }
     if (length(excludeChrs) > 0) {
+      message("Dropping excluded chromosomes...") 
       bins <- dropSeqlevels(bins, excludeChrs, pruning.mode="coarse")
     }
+  } # }}}
+
+  # this may or may not be necessary
+  pq_tmp <- tempdir()
+  pq_tbl <- paste0("bins.", binSize, "bp.", genome)
+  pq_bins <- paste0(pq_tbl, ".parquet")
+  pq_path <- file.path(pq_tmp, pq_bins) 
+  
+  # helper fn
+  bed3 <- function(gr) { 
+    df <- as.data.frame(gr)[, 1:3]
+    names(df)[1:3] <- c("chrom", "chromStart", "chromEnd")
+    return(df)
   }
 
-  pq_scm <- parquet_schema(seqnames="STRING", start="INT64", end="INT64")
-  pq_tmp <- tempdir()
-  pq_bins <- paste0("bins.", binSize, "bp.", genome, ".parquet")
-  pq_path <- file.path(pq_tmp, pq_bins) 
   message("Writing bins to ", pq_path, "...") 
-  write_parquet(as.data.frame(bins)[, 1:3], file=pq_path, schema=pq_scm)
+  pq_scm <- parquet_schema(chrom="STRING", chromStart="INT64", chromEnd="INT64")
+  write_parquet(bed3(bins), file=pq_path, schema=pq_scm)
   stopifnot(file.exists(pq_path))
   message("Done.")
 
+  stop("Not finished yet :-(") 
+  
+  # start here (hopefully always...)
   newcon <- is.null(con)
   if (newcon) con <- rduckhts_connect(...)
 
-  stop("Not finished yet :-(") 
+  # create bin index 
+  pq_tblname <- gsub("\\.", "_", pq_tbl)
+  dbExecute(con, 
+            paste0("CREATE OR REPLACE TABLE ", pq_tblname, 
+                   " AS SELECT * FROM '", pq_path, "'"))
+
+  pq_idx_name <- paste0(pq_tblname, "_tmp_idx")
+  pq_tbl_colnames <- detectChromStartEnd(pq_path)
+  names(pq_tbl_colnames) <- paste0("idx_", names(pq_tbl_colnames))
+  dbGetQuery(con,
+             with(pq_tbl_colnames, 
+                  paste0("SELECT * FROM duckhts_cgranges_from_table(",
+                         "'", pq_idx_name, "', ",
+                         "'", pq_tblname, "', ",
+                         "'", idx_chrom, "', ",
+                         "'", idx_chromStart, "', ", 
+                         "'", idx_chromEnd, "')")))
+
+  pq_pqt_colnames <- detectChromStartEnd(parquet)
+  names(pq_pqt_colnames) <- paste0("pqt_", names(pq_pqt_colnames))
+  both_colnames <- c(pq_tbl_colnames, pq_pqt_colnames)
+
+  chroms <- paste0("('", paste(seqlevels(bins), collapse="', '"), "')")
+
+  sql <-with(both_colnames, 
+             paste0("SELECT ",
+                    pqt_name, " AS name, ",
+                    pqt_chrom, " AS chrom, ",
+                    pqt_chromStart, " AS chromStart, ",
+                    pqt_chromEnd, " AS chromEnd, ",
+                    "duckhts_cgranges_count_overlaps('", pq_idx_name, "', 
+                                                     ", idx_chrom, ",
+                                                     ", idx_chromStart, ", 
+                                                     ", idx_chromEnd, ") ",
+                   "AS frags ",
+                   "FROM read_parquet('", parquet, "') ",
+                   "WHERE chrom IN ", chroms,
+                   "GROUP BY (name, chrom, chromStart, chromEnd) ",
+                   "ORDER BY chrom, chromStart, chromEnd, name"))
+  res <- dbGetQuery(con, sql)
+
 
   # need to scope the matrix in terms of columns (cells) and rows (regions)
   # this should probably be farmed out to a separate table for handling 
@@ -104,6 +160,7 @@ tallyFrags <- function(parquet, bins=NULL, assayType=c("coCUTnTag", "ATAC"), gen
     x = res$value
   )
 
+  if (newcon) DBI::dbDisconnect(con, shutdown = TRUE)
 
 }
 
